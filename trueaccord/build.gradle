@@ -1,0 +1,44 @@
+group 'com.marty'
+version '1.0'
+
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'application'
+
+sourceCompatibility = 1.8
+
+sourceSets {
+    test {
+        java {
+            srcDirs = ["src/test"]  // Note @Peter's comment below
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'org.json', name: 'json', version: '20210307'
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.12.0'
+    implementation group: 'org.apache.commons', name: 'commons-collections4', version: '4.4'
+    compile group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version: '2.12.3'
+}
+
+test {
+    useJUnit()
+}
+mainClassName = "com.marty.DebtCalculatorApplication"
+
