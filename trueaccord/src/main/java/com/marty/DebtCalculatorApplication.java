@@ -2,13 +2,16 @@ package com.marty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.marty.entity.DebtEntity;
 import com.marty.json.output.DebtOutput;
-import com.marty.service.DebtCalculatorLoader;
+import com.marty.service.DebtEntityLoader;
+import com.marty.service.DebtOutputCalculator;
 
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class DebtCalculatorApplication {
     Logger logger = Logger.getLogger("DebtCalculatorApplication");
@@ -19,12 +22,16 @@ public class DebtCalculatorApplication {
     }
 
     public void run()  {
-        DebtCalculatorLoader debtCalculatorLoader = new DebtCalculatorLoader();
+        DebtEntityLoader debtEntityLoader = new DebtEntityLoader();
+
 
         try {
-            debtCalculatorLoader.loadJson();
-            List<DebtOutput> results = debtCalculatorLoader.getDebtOutputs();
-            outputResults(results);
+            List<DebtEntity> debtEntities = debtEntityLoader.loadJson();
+            List<DebtOutput> debtOutputs =
+            debtEntities.stream().map(de -> new DebtOutputCalculator(de)
+                    .generateDebtOutput())
+                    .collect(Collectors.toList());
+            outputResults(debtOutputs);
 
 
         } catch (Exception e) {

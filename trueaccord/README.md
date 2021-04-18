@@ -12,38 +12,41 @@ a windows machine, I did include a runme_win.bat. (FULL DISCLOSURE - I didn't te
 
 # Design Overview
 When approaching this, I wanted to keep it simple, but separate out the code into several sections. I find that this is
-is beneficial when setting up for later enhancements. It also makes the code more readable. 
+is beneficial when setting up for later enhancements. It also makes the code more readable. While it may seem a little bit of overkill to 
+have the extra data transitions, it will scale better with this separation of concerns.
 
-From a style strategy, I tended to use a more functional programming approch when at all possible. I find that it reduces
+From a high level design perspective, data is translated as follows:
+
+rest call -> 
+        Json input objects(Debt, PaymentPlan, Payment) -> 
+        Entity Objects (DebtEntity->PaymentPlanEntity->PaymentEntity) ->
+        DebtOutput
+
+Processing is as follows:
+
+_DebtEntityLoader_ - Is responsible for:
+    1. Retrieving the json information from the provided endpoints
+    2. Deserializing the results in to "container" elements that were pure json.
+    3. Translating Json Objects into Normalized entity objects (this is the part that may be a bit of overkill, but it made things
+   much cleaner to have the data normalized so that there was a proper entity relationship maintained with the entities)
+
+_DebtOutputCalculator_ - Is responsible for:
+1. Using DebtEntity to calculate each required field
+2. Creating DebtOutput Json objects with proper calculated values
+
+Finally, the main application outputs the results. Once again I used the ObjectMapper which outputs in Json Lines format by default. I set up the 
+   date format on the serializer itself, and also created a simple currency serializer for the currency fields.
+   
+   
+From a style strategy, I tended to use a more functional programming approach when at all possible. I find that it reduces
 side effects, and once comfortable with it, is a very expressive way to code.
 
 Finally, I tried to use as few libraries as possible. I really like the jackson json libraries, so that was a must. Other than
 that, I only added in the apache commons collections for a couple of utility functions.
 
-## Strategy
-
-The starting point for all of this is the DebtCalculatorApplication. I like to keep this class simple as a rule, and just
-have it "tell the story" of what the application is going to do.
-
-The overall strategy that I took was to 
-1. Load the data into a structure that was easier to work with. This was done in the DebtCalculatorLoader. This involved:
-    1. retrieving the json information from the provided endpoints
-    2. deserializing the results in to "container" elements that were pure json.
-    3. creating indexes on the debt and payment plans by id so that I could access them O(1) to constuct the final
-       structure. 
-    4. creating the composite calculator structure for each debt that could then be used to calculate the required information.
-2. Create calculator classes (one for the debt - DebtOutputCalculator), and one for the PaymentPlan (PaymentPlanOutputCalculator).
-   These classes were used for two purposes:
-   1. First, they gave a way to provide a normalized view of the data. The Debt (optionally) contained the PaymentPlan,
-     and the PaymentPlan contained the list of Payments. This made it much easier to do the calculations (see note below
-     on combining Json and Calculators)
-   2. They used this normalized structure to calculate the required information. Most of the calculation was done at the
-       payment plan level. the debt calculator was used mainly to provide default behavior if there was no payment plan.
-3. Output the results. Once again I used the ObjectMapper which outputs in Json Lines format by default. I set up the 
-   date format on the serializer itself, and also created a simple currency serializer for the currency fields.
 
 ## Testing 
-Given the limited time, I only added unit tests for the "complex" code (that being the two calculators). 
+Given the limited time, I only added unit tests for the "complex" code (that being the calculator). 
 
 
 #Assumptions
@@ -58,6 +61,8 @@ if I was going to re-think my original implementation:
 - Additional unit tests. This was the bare minimum for the complicated logic
 - Additional validation in the code. Current code assumes good data. Added a few TODOs for this
 - See other TODOs in the code.
-- I think the overlap between the Json input objects and the calculator is a bit confusing. If I had it all to do
-  over again, I would probably separate that out a bit more. I just feels a bit messy to be combining the calculators and
-  json objects.
+
+N.B. The second commit was a major re-work from the first. I wasn't happy with the first version because there was too
+much of a mix between the calculator and the data. Because of this, I created the intermediate entities and then had the 
+calculator work on the passed in data, instead of incorporating the data with the calculator. I thought this was much cleaner
+and easier to understand.

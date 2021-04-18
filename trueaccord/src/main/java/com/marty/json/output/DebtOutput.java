@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.marty.entity.DebtEntity;
 import com.marty.json.serializer.CurrencySerializer;
 import com.marty.service.DebtOutputCalculator;
 
@@ -29,14 +30,20 @@ public class DebtOutput {
 
     private Date nextPaymentDueDate;
 
-    public DebtOutput(DebtOutputCalculator calculator) {
-        this.id = calculator.getId();
-        this.amount = calculator.getAmount();
-        this.isInPaymentPlan = calculator.isInPaymentPlan();
-        this.remainingAmount = calculator.getRemainingAmount();
-        this.nextPaymentDueDate = calculator.getNextPaymentDueDate();
+    public DebtOutput(DebtEntity debtEntity) {
+        this.id = debtEntity.getId();
+        this.amount = debtEntity.getAmount();
     }
 
-    public Integer getId() { return this.id; }
+    public void setInPaymentPlan(boolean inPaymentPlan) {
+        isInPaymentPlan = inPaymentPlan;
+    }
 
+    public void setRemainingAmount(BigDecimal remainingAmount) {
+        this.remainingAmount = remainingAmount;
+    }
+
+    public void setNextPaymentDueDate(Date nextPaymentDueDate) {
+        this.nextPaymentDueDate = nextPaymentDueDate;
+    }
 }

@@ -2,6 +2,9 @@ package com.marty.service;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.marty.entity.DebtEntity;
+import com.marty.entity.PaymentEntity;
+import com.marty.entity.PaymentPlanEntity;
 import com.marty.json.input.Debt;
 import com.marty.json.input.Payment;
 import com.marty.json.input.PaymentPlan;
@@ -19,7 +22,7 @@ import java.util.stream.Collectors;
  * this class was so simple that I just combined everyting into one class. I also thought about abstracting this a bit
  * more but decided not to for the same reason.
  */
-public class DebtCalculatorLoader {
+public class DebtEntityLoader {
 
     private final static String debtsUrl= "https://my-json-server.typicode.com/druska/trueaccord-mock-payments-api/debts";
     private final static String paymentPlansUrl= "https://my-json-server.typicode.com/druska/trueaccord-mock-payments-api/payment_plans";
@@ -32,8 +35,8 @@ public class DebtCalculatorLoader {
 
     // indexes to optimize lookups. Lookups will be O(1)
 
-    private Map<Integer, DebtOutputCalculator> debtById = new HashMap<>();
-    private Map<Integer, PaymentPlanOutputCalculator> planById = new HashMap<>();
+    private Map<Integer, DebtEntity> debtById = new HashMap<>();
+    private Map<Integer, PaymentPlanEntity> planById = new HashMap<>();
 
     /**
      * Load all json-based information into
@@ -42,7 +45,7 @@ public class DebtCalculatorLoader {
      * @throws IOException
      */
 
-    public DebtCalculatorLoader() {
+    public DebtEntityLoader() {
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
         df.setTimeZone(TimeZone.getDefault());
         objectMapper = new ObjectMapper();
@@ -50,13 +53,23 @@ public class DebtCalculatorLoader {
 
     }
 
-    public void loadJson() throws IOException {
+    /**
+     * Main method that does the following:
+     * 1. load debts from rest call and create DebtEntities
+     * 2. load payment plans from rest call and add PaymentPlanEntities to DebtEntities
+     * 3. load payments from rest call and add Payments to PaymentPlanEntities
+     * 4. Return the debt entites sorted by id
+     * @return
+     * @throws IOException
+     */
+    public List<DebtEntity> loadJson() throws IOException {
         debts = Arrays.asList(objectMapper.readValue(new URL(debtsUrl), Debt[].class));
         paymentPlans = Arrays.asList(objectMapper.readValue(new URL(paymentPlansUrl), PaymentPlan[].class));
         payments = Arrays.asList(objectMapper.readValue(new URL(paymentsUrl), Payment[].class));
         loadDebts(debts);
         loadPaymentPlans(paymentPlans);
         loadPayments(payments);
+        return debtById.values().stream().sorted(Comparator.comparingInt(DebtEntity::getId)).collect(Collectors.toList());
     }
 
 
@@ -65,8 +78,8 @@ public class DebtCalculatorLoader {
         // TODO: Ensure no multiple ids
         if (CollectionUtils.isNotEmpty(debts)) {
             debts.forEach(d -> {
-                DebtOutputCalculator debtOutputCalculator = new DebtOutputCalculator(d);
-                debtById.put(debtOutputCalculator.getId(), debtOutputCalculator);
+                DebtEntity debtEntity = new DebtEntity(d);
+                debtById.put(debtEntity.getId(), debtEntity);
             });
         }
     }
@@ -82,10 +95,10 @@ public class DebtCalculatorLoader {
     private void loadPaymentPlans(List<PaymentPlan> paymentPlans) {
         if (CollectionUtils.isNotEmpty(paymentPlans)) {
             paymentPlans.forEach(pp -> {
-                DebtOutputCalculator foundDebt = debtById.get(pp.getDebtId());
-                PaymentPlanOutputCalculator paymentPlanOutputCalculator = new PaymentPlanOutputCalculator(pp);
-                foundDebt.setPaymentPlanOutputCalculator(Optional.ofNullable(paymentPlanOutputCalculator));
-                planById.put(paymentPlanOutputCalculator.getId(), paymentPlanOutputCalculator);
+                DebtEntity foundDebt = debtById.get(pp.getDebtId());
+                PaymentPlanEntity paymentPlanEntity = new PaymentPlanEntity(pp);
+                foundDebt.setPaymentPlanEntity(Optional.ofNullable(paymentPlanEntity));
+                planById.put(paymentPlanEntity.getId(), paymentPlanEntity);
             });
         }
     }
@@ -100,27 +113,11 @@ public class DebtCalculatorLoader {
     private void loadPayments(List<Payment> payments) {
         if (CollectionUtils.isNotEmpty(payments)) {
             payments.forEach(p -> {
-                PaymentPlanOutputCalculator foundPlan = planById.get(p.getPaymentPlanId());
-                foundPlan.addPayment(p);
+                PaymentPlanEntity foundPlan = planById.get(p.getPaymentPlanId());
+                foundPlan.addPaymentEntity(new PaymentEntity(p));
             });
         }
 
-    }
-
-    /**
-     * Method to map the results to the final Json objects. NOTE: Even though the DebtOutputCalculator
-     * could have been used to directly generate the JSON, it is a better separation of concerns
-     * to have the output contained in a separate JSON object, which can be either printed (as in this example),
-     * or serialized and sent via http to another destination.
-     *
-     * Also order is not assumed, so the output is sorted by id before returning.
-     * @return
-     */
-    public List<DebtOutput> getDebtOutputs() {
-        return debtById.values().stream()
-                .map(DebtOutput::new)
-                .sorted(Comparator.comparing(DebtOutput::getId))
-                .collect(Collectors.toList());
     }
 
 }
